@@ -15,8 +15,8 @@ var objectId = 0;
 var firstMessage = {
   text: 'hello',
   username: 'Admin'
-}
-var dataBody = {'results': [firstMessage]};
+};
+var dataBody = {'results': ['']};
 
 // var defaultCorsHeaders = {
 //   'access-control-allow-origin': '*',
@@ -24,61 +24,52 @@ var dataBody = {'results': [firstMessage]};
 //   'access-control-allow-headers': 'content-type, accept',
 //   'access-control-max-age': 10,
 // };
-
-var requestHandler = function(request, response) {
-  var dataFile = require('./test-data.js');
-  var jsonData = dataFile.data;
-  var requestURL = request.url;
-  var requestHeaders = request.headers;
-  var method = request.method;
-
-  var defaultHeaders = {
-  'Content-Type':'application/json',
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'access-control-allow-headers': 'content-type, accept',
-  'access-control-max-age': 10 // Seconds.
-  };
-
-  if (requestURL.indexOf('classes') === -1) {
-    response.statusCode = 404;
-    response.end('not found');
+var headers = {
+    'Content-Type':'application/json',
+    'access-control-allow-origin': '*',
+    'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'access-control-allow-headers': 'content-type, accept',
+    'access-control-max-age': 10 // Seconds.
   }
-
-  if (requestURL === '/classes/messages' && request.method === 'POST'){
-    // .writeHead() writes to the request line and headers of the response,
-    // which includes the status and all headers.
-    request.on('data', function(chunk){
+let writeResponse = function(statusCode, response, headers) {
+  response.writeHead(statusCode, headers);
+  response.end(JSON.stringify(dataBody));
+}
+let requestMethods = {
+  'GET': function(request, response) {
+    writeResponse(200, response, headers)
+  },
+  'POST': function(request, response) {
+    request.on('data', function(chunk) {
       objectId++;
       chunk = JSON.parse(chunk)
       chunk['objectId'] = objectId;
       dataBody.results.push(chunk);
     });
-
-    request.on('end', function(message){
-      console.log('POST');
-      response.writeHead(201, defaultHeaders);
-      response.end(JSON.stringify(dataBody));
+    request.on('end', function() {
+      console.log('POST')
+      writeResponse(201, response, headers)
     });
+  },
+  'OPTIONS': function(request, response){
+    writeResponse(200, response, headers)
+  }
+}
 
-
-  } else if (requestURL === '/classes/messages' && request.method === 'GET') {
-    console.log('GET');
-    response.writeHead(200, defaultHeaders);
-    response.end(JSON.stringify(dataBody));
-  } else if (method === 'OPTIONS'){
-    console.log('OPTIONS', method)
-    response.writeHead(200, defaultHeaders);
-    response.end(JSON.stringify(dataBody));
+var requestHandler = function(request, response) {
+  var requestHeaders = request.headers;
+  var method = request.method;
+  if(method in requestMethods){
+    requestMethods[method](request, response);
   } else {
-    console.log('ERROR')
-       response.statusCode = 404;
-    response.end('not found');
+    response.writeHead(404, headers);
+    response.end(JSON.stringify("Error"));
   }
 };
 
 
 exports.requestHandler = requestHandler;
+exports.headers = headers;
 
 /*
 

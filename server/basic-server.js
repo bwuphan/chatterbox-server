@@ -2,6 +2,8 @@
 var http = require('http');
 var requestHandler = require('./request-handler');
 var handleRequest = requestHandler.requestHandler;
+var headers = requestHandler.headers;
+var urlParser = require('url');
 
 
 
@@ -28,7 +30,13 @@ var ip = '127.0.0.1';
 //
 // After creating the server, we will tell it to listen on the given port and IP. */
 var server = http.createServer(function(req, res) {
-  requestHandler.requestHandler(req, res);
+  let urlPath = urlParser.parse(req.url).pathname;
+  if( urlPath === '/classes/messages'){
+    requestHandler.requestHandler(req, res);
+  } else {
+    res.writeHead(404, headers);
+    res.end(JSON.stringify('Error in endpoint'))
+  }
 });
 
 console.log('Listening on http://' + ip + ':' + port);
